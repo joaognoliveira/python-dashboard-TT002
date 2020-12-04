@@ -130,9 +130,9 @@ graph1.update_traces(mode='markers', marker=dict(sizemode='area',
                                               sizeref=sizeref, line_width=2))
 
 graph1.update_layout(
-    title='Expectativa de vida vs. GDP per capita (PIB)(US$)',
+    title='Expectativa de vida vs. GDP per capita',
     xaxis=dict(
-        title='GDP per capita (dólares)',
+        title='GDP per capita (US$)',
         gridcolor='white',
         gridwidth=2,
     ),
