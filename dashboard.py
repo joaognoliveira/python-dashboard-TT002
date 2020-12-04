@@ -155,7 +155,7 @@ app.layout = html.Div(children=[
     # Exercicio 1
     html.Div(
         dcc.Graph(
-            id='example-graph',
+            id='bubble_scatter_graph',
             figure= graph1
         ), style={'width': '80%', 'padding': '0px 20px 20px 20px', 'verticalAlign':"middle"}
     ),
