@@ -37,23 +37,28 @@ def add_columns(df=None, nome='', series_code=''):
     """Adiciona colunas ao dataframe, método criado pelo fato do dataset
     em questão trazer os indicadores em linhas, não em colunas
     """      
-    #carrega o dataframe do csv que contem os dados desejados
+    # Carrega o dataframe do csv que contem os dados desejados
     csv_path_1 = 'data/' + nome
     csv_path_1 = os.path.join(os.path.dirname(__file__), csv_path_1)
     df_query = dd.read_csv(csv_path_1, sep=';')
     df_query = df_query.compute()
     df_query = df_query.sort_values(['CountryName', 'Year'])
-    df_query = df_query.loc[(df_query['SeriesCode']== series_code) &
-                            (df_query['Year']== 2017)] #somente na ocasião estática
-    
+    df_query = df_query.loc[(df_query['SeriesCode']== series_code)]
+
+    # Renomeia a coluna de valores para exibir o seriescode desejado
     df_query.rename(columns = {'Value': series_code}, inplace = True)
+
+    ''' "Reseta" a indexação para evitar valores nulos. "ah mas isso pode acabar
+    enviesando a exibição de valores para filtros maiores". "De fato, porém
+    acredito que o mesmo tratamento de sort, ou seja, por country name e ano
+    bastaria nesse caso'''
     df_query.reset_index(drop=True, inplace=True)
     df.reset_index(drop=True, inplace=True)
+
+    # Atribui a nova linha de valores filtrados pelo loc a coluna nova
     new_column = df_query[series_code]
     df = df.join(new_column)
     return df
-
-#def clean_database(df=None, linhas=[]):
 
 # CSS para página
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -82,19 +87,16 @@ df_remove = df_graph1_not_treated.loc[
 
 df_graph1 = df_graph1_not_treated.drop(df_remove.index)
 
-# Primeira atribuição estática
-df_graph1_2017 = df_graph1[df_graph1['Year']==2017]
-
 # Chamadas das funções necessárias para manipulação dos dados
-df_graph1_2017 = df_graph1_2017.rename(columns = {'Value':'NY.GDP.PCAP.CD'}, inplace = False)
-df_graph1_2017 = add_columns(df_graph1_2017, 'HealthAndPoverty_Data.csv', 'SP.POP.TOTL')
-df_graph1_2017 = add_columns(df_graph1_2017, 'HealthAndPoverty_Data.csv', 'SP.DYN.LE00.IN')
+df_graph1 = df_graph1.rename(columns = {'Value':'NY.GDP.PCAP.CD'}, inplace = False)
+df_graph1 = add_columns(df_graph1, 'HealthAndPoverty_Data.csv', 'SP.POP.TOTL')
+df_graph1 = add_columns(df_graph1, 'HealthAndPoverty_Data.csv', 'SP.DYN.LE00.IN')
 
 #definindo informações do mouser hover e tamanho das bolhas do gráfico
 hover_text = []
 bubble_size = []
 
-for index, row in df_graph1_2017.iterrows():
+for index, row in df_graph1.iterrows():
     hover_text.append(('País: {country}<br>'+
                       'Expectativa de vida: {life}<br>'+
                       'GDP per capita: {gpd}<br>'+
@@ -106,44 +108,9 @@ for index, row in df_graph1_2017.iterrows():
                                             year=row['Year']))
     bubble_size.append(math.sqrt(row['SP.POP.TOTL'])) #SP.POP.TOTL
 
-df_graph1_2017['text'] = hover_text
-df_graph1_2017['size'] = bubble_size
-sizeref = 2.*max(df_graph1_2017['size'])/(100**2)
-
-# Dicionario com os dataframes para país
-paises = ['Brazil', 'China', 'India', 'Russian Federation', 'South Africa']
-dados_paises = {pais:df_graph1_2017.query("CountryName=='%s'" %pais)
-                              for pais in paises}
-
-# Figura base do grafico de bolhas
-graph1 = go.Figure()
-
-for paises, pais in dados_paises.items():
-    graph1.add_trace(go.Scatter(
-        x=pais['NY.GDP.PCAP.CD'], y=pais['SP.DYN.LE00.IN'],
-        name=paises, text=pais['text'],
-        marker_size=pais['size'],
-        ))
-
-# Tune marker appearance and layout
-graph1.update_traces(mode='markers', marker=dict(sizemode='area',
-                                              sizeref=sizeref, line_width=2))
-
-graph1.update_layout(
-    title='Expectativa de vida vs. GDP per capita',
-    xaxis=dict(
-        title='GDP per capita (US$)',
-        gridcolor='white',
-        gridwidth=2,
-    ),
-    yaxis=dict(
-        title='Expectativa de vida',
-        gridcolor='white',
-        gridwidth=2,
-    ),
-    paper_bgcolor='rgb(243, 243, 243)',
-    plot_bgcolor='rgb(243, 243, 243)',
-)
+df_graph1['text'] = hover_text
+df_graph1['size'] = bubble_size
+sizeref = 2.*max(df_graph1['size'])/(100**2)
 
 # Layout do app
 app.layout = html.Div(children=[
@@ -152,14 +119,70 @@ app.layout = html.Div(children=[
         html.H5('199617, João Gabriel'),
         html.H5('156471, Luiz Felipe Rosa da Silveira'),
 
-    # Exercicio 1
+    # Bubble_chart
     html.Div(
         dcc.Graph(
             id='bubble_scatter_graph',
-            figure= graph1
+            #figure= graph1
         ), style={'width': '80%', 'padding': '0px 20px 20px 20px', 'verticalAlign':"middle"}
     ),
+
+    html.Div(
+        dcc.Slider(
+            id= 'slider-bubble_chart',
+            min=df_graph1['Year'].min(),
+            max=df_graph1['Year'].max(),
+            value= df_graph1['Year'].min(),
+            marks={int(year): '{}'.format(year)[:-2] for year in df_graph1['Year'].unique()},
+            step=None   
+        ), style={'width': '80%', 'padding': '20px 20px 20px 20px', 'verticalAlign':"middle"}
+    ),
 ])
+
+# callback que atualiza o bubble chart com o valor do ano no slider
+@app.callback(
+    dash.dependencies.Output('bubble_scatter_graph', 'figure'),
+    [dash.dependencies.Input('slider-bubble_chart', 'value')]
+)
+def update_bubble_chart_slider(value):
+    df_by_Year = df_graph1[df_graph1['Year']==value]
+
+    # Figura base do bubble chart
+    df_by_Year = go.Figure()
+    
+    # Dicionario com os dataframes para cada país
+    paises = ['Brazil', 'China', 'India', 'Russian Federation', 'South Africa']
+    dados_paises = {pais:df_graph1.query("CountryName=='%s' & Year=='%f'" % (pais, value))
+                              for pais in paises}
+
+    for paises, pais in dados_paises.items():
+        df_by_Year.add_trace(go.Scatter(
+            x=pais['NY.GDP.PCAP.CD'], y=pais['SP.DYN.LE00.IN'],
+            name=paises, text=pais['text'],
+            marker_size=pais['size'],
+            ))
+
+    # Aparencia e layout do marcador
+    df_by_Year.update_traces(mode='markers', marker=dict(sizemode='area',
+                                                sizeref=sizeref, line_width=2))
+
+    df_by_Year.update_layout(
+        title='Expectativa de vida vs. GDP per capita',
+        xaxis=dict(
+            title='GDP per capita (US$)',
+            gridcolor='white',
+            gridwidth=2,
+        ),
+        yaxis=dict(
+            title='Expectativa de vida',
+            gridcolor='white',
+            gridwidth=2,
+        ),
+        paper_bgcolor='rgb(243, 243, 243)',
+        plot_bgcolor='rgb(243, 243, 243)',
+        transition_duration= 600,
+    )
+    return df_by_Year
 
 if __name__ == '__main__':
     app.run_server(host='0.0.0.0', debug=True)
