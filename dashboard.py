@@ -3,7 +3,7 @@ T_TT002A_2020S2
 216968, Giovanni Bassetto
 199617, João Gabriel 
 156471, Luiz Felipe Rosa da Silveira
-Projeto Final - Dashboard dos dados eleitorais brasileiros do ano de 2020
+Projeto Final - Dashboard dos dados sobre os BRICS desde 1970
 -
 
 A massa de dados pode ser encontrada em:
@@ -21,17 +21,6 @@ import pandas as pd
 import math
 import os
 import time
-
-def convert_to_month(df=None, date_column="date"):
-    """Usa uma coluna de datas para criar uma nova coluna que contém
-    o número do mes
-    """
-    # Converte a data de string para datetime
-    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
-    # A partir da data obtem o número da semana
-    df["month"] = df["date"].dt.month
-    # Retorna os dados atualizados
-    return df
 
 def add_columns(df=None, nome='', series_code=''):
     """Adiciona colunas ao dataframe, método criado pelo fato do dataset
@@ -119,7 +108,11 @@ app.layout = html.Div(children=[
         html.H5('199617, João Gabriel'),
         html.H5('156471, Luiz Felipe Rosa da Silveira'),
 
-    # Bubble_chart
+    # Dropdown contendo os Series Descriptions
+    # Eixo x = tal indicador
+    # Eixo y = tal indicador
+
+    # Bubble_chart inspirado no gapminder para os BRICS
     html.Div(
         dcc.Graph(
             id='bubble_scatter_graph',
@@ -127,6 +120,9 @@ app.layout = html.Div(children=[
         ), style={'width': '80%', 'padding': '0px 20px 20px 20px', 'verticalAlign':"middle"}
     ),
 
+    # Criar Tabs (dcc.Tab) para dividir as visualizações
+
+    # Slides para o time frame dos anos
     html.Div(
         dcc.Slider(
             id= 'slider-bubble_chart',
@@ -141,6 +137,7 @@ app.layout = html.Div(children=[
 
 # callback que atualiza o bubble chart com o valor do ano no slider
 @app.callback(
+    # No caso de desenvolver o dropdown seria passado o id dele como o input pro callback
     dash.dependencies.Output('bubble_scatter_graph', 'figure'),
     [dash.dependencies.Input('slider-bubble_chart', 'value')]
 )
