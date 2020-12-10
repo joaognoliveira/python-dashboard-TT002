@@ -112,6 +112,46 @@ df_graph1['text'] = hover_text
 df_graph1['size'] = bubble_size
 sizeref = 2.*max(df_graph1['size'])/(100**2)
 
+#Grafico 2
+
+Da = 'data/PrivateSector_Data.csv'
+Da = os.path.join(os.path.dirname(__file__), Da)
+
+df_graph2_not_treated = dd.read_csv(Da, sep=';')
+df_graph2_not_treated = df_graph2_not_treated.compute()
+df_graph2_not_treated = df_graph2_not_treated.sort_values(['CountryName', 'Year'])
+rows_to_be_used = ( #Private Sector(Importação comercial)
+                    'TM.VAL.SERV.CD.WT',
+                    #Public Sector (populacao total, Dividas Do Governo)
+                    'SP.POP.TOTL', 'GC.DOD.TOTL.CN')
+df_remove2 = df_graph2_not_treated.loc[
+    (df_graph2_not_treated['SeriesCode'] != 'NY.GDP.PCAP.CD')]
+
+df_graph2 = df_graph2_not_treated.drop(df_remove2.index)
+
+df_graph2 = df_graph2.rename(columns = {'Value':'TM.VAL.SERV.CD.WT'}, inplace = False)
+df_graph2 = add_columns(df_graph2, 'HealthAndPoverty_Data.csv', 'SP.POP.TOTL')
+df_graph2 = add_columns(df_graph2, 'PublicSector_Indicators.csv', 'GC.DOD.TOTL.CN')
+
+#definindo informações do mouser hover e tamanho das bolhas do gráfico
+hover_text = []
+bubble_size = []
+
+for index, row in df_graph2.iterrows():
+    hover_text.append(('País: {country}<br>'+
+                      'Importação Comercial: {importacao}<br>'+
+                      'Divida do Governo: {ddg}<br>'+
+                      'População: {pop}<br>'+
+                      'Ano: {year}').format(country=row['CountryName'],
+                                            importacao=row['TM.VAL.SERV.CD.WT'], #TM.VAL.SERV.CD.WT
+                                            ddg=row['GC.DOD.TOTL.CN'],#NY.GDP.PCAP.CD
+                                            pop=row['SP.POP.TOTL'], #SP.POP.TOTL
+                                            year=row['Year']))
+    bubble_size.append(math.sqrt(row['SP.POP.TOTL'])) #SP.POP.TOTL
+
+df_graph2['text'] = hover_text
+df_graph2['size'] = bubble_size
+
 # Layout do app
 app.layout = html.Div(children=[
     html.H2(children='TT002 - Atividade em Grupo (Dashboard)'),
@@ -137,13 +177,30 @@ app.layout = html.Div(children=[
             step=None   
         ), style={'width': '80%', 'padding': '20px 20px 20px 20px', 'verticalAlign':"middle"}
     ),
+    html.Div(
+        dcc.Graph(
+            id='bubble_scatter_graph2',
+            #figure= graph1
+        ), style={'width': '80%', 'padding': '0px 20px 20px 20px', 'verticalAlign':"middle"}
+    ),
+    html.Div(
+        dcc.Slider(
+            id= 'slider-bubble_chart2',
+            min=df_graph2['Year'].min(),
+            max=df_graph2['Year'].max(),
+            value= df_graph2['Year'].min(),
+            marks={int(year): '{}'.format(year)[:-2] for year in df_graph2['Year'].unique()},
+            step=None   
+        ), style={'width': '80%', 'padding': '20px 20px 20px 20px', 'verticalAlign':"middle"}
+    ),
 ])
 
 # callback que atualiza o bubble chart com o valor do ano no slider
 @app.callback(
-    dash.dependencies.Output('bubble_scatter_graph', 'figure'),
+        dash.dependencies.Output('bubble_scatter_graph', 'figure'),
     [dash.dependencies.Input('slider-bubble_chart', 'value')]
 )
+
 def update_bubble_chart_slider(value):
     df_by_Year = df_graph1[df_graph1['Year']==value]
 
@@ -186,3 +243,4 @@ def update_bubble_chart_slider(value):
 
 if __name__ == '__main__':
     app.run_server(host='0.0.0.0', debug=True)
+
