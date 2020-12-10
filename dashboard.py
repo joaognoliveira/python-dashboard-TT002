@@ -123,11 +123,7 @@ app.layout = html.Div(children=[
     html.Div(
         dcc.Graph(
             id='bubble_scatter_graph',
-<<<<<<< HEAD
-            figure= graph1
-=======
             #figure= graph1
->>>>>>> bubble_scatter_chart
         ), style={'width': '80%', 'padding': '0px 20px 20px 20px', 'verticalAlign':"middle"}
     ),
 
